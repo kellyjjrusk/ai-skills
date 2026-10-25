@@ -1,0 +1,561 @@
+{
+  "version": "1.0.0",
+  "placeholders": {
+    "{app}": "application name from intake",
+    "{app_type}": "application type from intake",
+    "{vendor}": "vendor name from intake (or 'the vendor')"
+  },
+  "hosting_values": ["saas", "paas", "iaas", "on-prem"],
+  "roles": {
+    "core": [
+      {"id": "exec-sponsor", "name": "Executive Sponsor", "duties": "Owns governance at the leadership level, funds it, breaks ties, and removes organizational blockers."},
+      {"id": "business-owner", "name": "Business Owner (Committee Lead)", "duties": "Chairs the committee, owns the plan and the policy backlog, approves policies, and reports status to the sponsor."},
+      {"id": "app-admin", "name": "{app} Administrator", "duties": "Operates {app}: users, roles, configuration, upgrades and day-to-day enforcement of policies and standards."},
+      {"id": "infra-lead", "name": "Network & Infrastructure Lead", "duties": "Owns hosting, network, identity integration and platform availability (or the vendor relationship for SaaS)."},
+      {"id": "dev-lead", "name": "Development Lead", "duties": "Owns customizations, integrations, code quality, release practices and technical standards."},
+      {"id": "content-data-manager", "name": "Content / Data Manager", "duties": "Owns the information inside {app}: ownership, quality, lifecycle and author/user standards."},
+      {"id": "business-stakeholder", "name": "Business Stakeholder (e.g. Marketing, Operations)", "duties": "Represents the business teams that depend on {app}; brings requirements and validates that standards are workable."},
+      {"id": "comms-lead", "name": "Internal Communications Lead", "duties": "Owns the communication plan: audiences, messages, channels, timing and feedback loops."}
+    ],
+    "robust": [
+      {"id": "security-lead", "name": "Information Security Lead", "duties": "Owns security policies, risk assessments, vulnerability management and incident response alignment."},
+      {"id": "devops-lead", "name": "DevOps / Platform Engineering Lead", "duties": "Owns CI/CD, environments, infrastructure as code, secrets and deployment controls."},
+      {"id": "compliance-officer", "name": "Risk & Compliance Officer", "duties": "Maps policies to regulatory and contractual obligations, owns audits, evidence and exceptions register."},
+      {"id": "vendor-manager", "name": "Vendor / Procurement Manager", "duties": "Owns vendor contracts, SLAs, renewals, licensing and third-party risk reviews."},
+      {"id": "data-protection", "name": "Data Protection / Privacy Lead", "duties": "Owns data classification, privacy impact assessments, retention and data subject requests."}
+    ]
+  },
+  "policies": [
+    {
+      "id": "P-01", "pack": "core", "category": "Access", "name": "Secure Access & Authentication",
+      "purpose": "Ensure only verified people and systems can reach {app}, using strong, centrally managed authentication.",
+      "statements": [
+        "All users MUST authenticate to {app} through the organization's approved identity provider (single sign-on) where {app} supports it.",
+        "Multi-factor authentication MUST be enforced for every account with administrative or elevated privileges, and SHOULD be enforced for all users.",
+        "Shared, generic or default accounts MUST NOT be used for interactive access.",
+        "Administrative interfaces of {app} MUST NOT be exposed to the public internet without compensating controls."
+      ],
+      "standards": [
+        {"text": "Integrate {app} with the corporate identity provider (SAML/OIDC); disable local accounts except documented break-glass accounts."},
+        {"text": "Break-glass accounts: maximum two, vaulted credentials, MFA, usage alerted and reviewed within one business day."},
+        {"text": "Rename or disable vendor default administrator accounts during installation; rotate any default credentials immediately.", "when": ["iaas", "on-prem", "paas"]},
+        {"text": "Restrict administrative URLs to the corporate network, VPN or zero-trust access proxy; block them at the edge/WAF for public traffic.", "when": ["iaas", "on-prem", "paas"]},
+        {"text": "Enable the vendor's SSO, MFA enforcement and IP allow-listing options in the {vendor} admin console; document the settings chosen.", "when": ["saas"]},
+        {"text": "Session timeout of 30 minutes idle or less for administrative sessions; all access over TLS 1.2+."}
+      ],
+      "owner": "app-admin", "raci": {"R": "app-admin", "A": "business-owner", "C": ["infra-lead"], "I": ["comms-lead"]},
+      "metrics": ["% of users authenticating via SSO", "% of privileged accounts with MFA", "Number of active local/shared accounts"],
+      "review_months": 12, "csf": ["PR"], "tags": ["SOC 2", "ISO 27001", "HIPAA", "PCI DSS"]
+    },
+    {
+      "id": "P-02", "pack": "core", "category": "Access", "name": "Roles, Permissions & Access Reviews",
+      "purpose": "Grant the least privilege needed for each job and keep it that way over time.",
+      "statements": [
+        "Access to {app} MUST be granted through roles or groups, not assigned directly to individual accounts.",
+        "Users MUST receive the minimum permissions required for their role (least privilege).",
+        "Privileged roles MUST be limited to named individuals approved by the Business Owner.",
+        "Access MUST be reviewed at least quarterly for privileged roles and semi-annually for all roles.",
+        "Access MUST be removed within one business day of a role change or departure."
+      ],
+      "standards": [
+        {"text": "Maintain a role catalog for {app}: role name, purpose, permissions summary, approver, and typical members."},
+        {"text": "Request and approve access through the service desk/ticketing system; the approver is the role owner, never the requester."},
+        {"text": "Automate provisioning and deprovisioning from the HR/identity system (SCIM or directory group sync) where supported."},
+        {"text": "Quarterly review: export users and roles, role owners attest, revocations ticketed and evidenced."},
+        {"text": "Separate duties: users who author or change data SHOULD NOT also approve their own changes in workflows."}
+      ],
+      "owner": "app-admin", "raci": {"R": "app-admin", "A": "business-owner", "C": ["content-data-manager"], "I": ["exec-sponsor"]},
+      "metrics": ["Privileged account count", "Access review completion on time", "Orphaned accounts found per review"],
+      "review_months": 12, "csf": ["PR", "GV"], "tags": ["SOC 2", "ISO 27001", "SOX", "HIPAA"]
+    },
+    {
+      "id": "P-03", "pack": "core", "category": "Information", "name": "Content & Data Ownership and Lifecycle",
+      "purpose": "Make sure every piece of information in {app} has an owner, stays accurate, and is retired on time.",
+      "statements": [
+        "Every major content area, data set or module in {app} MUST have a named business owner.",
+        "Owners MUST review their content/data for accuracy at a defined interval.",
+        "Information MUST be retained and disposed of according to the organization's retention schedule.",
+        "Obsolete content/data MUST be archived or removed rather than left active."
+      ],
+      "standards": [
+        {"text": "Maintain an ownership register: area, owner, backup owner, review interval, retention rule."},
+        {"text": "Default review interval: 12 months for general content, 6 months for regulated or customer-facing information."},
+        {"text": "Use {app}'s workflow, expiry or archival features where available; otherwise run a scheduled stale-content report."},
+        {"text": "Naming and structure conventions documented in a style guide and enforced at creation (templates, required fields, validation)."}
+      ],
+      "owner": "content-data-manager", "raci": {"R": "content-data-manager", "A": "business-owner", "C": ["business-stakeholder"], "I": ["app-admin"]},
+      "metrics": ["% of areas with a named owner", "% of items reviewed within interval", "Stale items count"],
+      "review_months": 12, "csf": ["ID", "GV"], "tags": ["ISO 27001", "GDPR", "Records management"]
+    },
+    {
+      "id": "P-04", "pack": "core", "category": "Change", "name": "Change & Release Management",
+      "purpose": "Change {app} predictably so that releases don't surprise users or break production.",
+      "statements": [
+        "All changes to {app} configuration, code, integrations or structure in production MUST follow the approved change process.",
+        "Changes MUST be tested in a non-production environment before production unless classified as an emergency change.",
+        "Emergency changes MUST be documented and retroactively reviewed within five business days.",
+        "Every production change MUST have a rollback plan."
+      ],
+      "standards": [
+        {"text": "Classify changes: standard (pre-approved, low risk), normal (committee or CAB approval), emergency (post-review)."},
+        {"text": "Minimum environments: development/test and production; staging/UAT for customer-facing or high-risk systems."},
+        {"text": "Release notes published to affected users for any user-visible change; maintenance windows communicated at least 3 business days ahead."},
+        {"text": "Track vendor release schedules and assess each release for impact before it reaches production.", "when": ["saas"]},
+        {"text": "Freeze periods defined for peak business events."}
+      ],
+      "owner": "dev-lead", "raci": {"R": "dev-lead", "A": "business-owner", "C": ["app-admin", "infra-lead"], "I": ["comms-lead", "business-stakeholder"]},
+      "metrics": ["Change success rate", "Emergency changes per month", "Changes without ticket"],
+      "review_months": 12, "csf": ["PR", "GV"], "tags": ["SOC 2", "ITIL", "SOX"]
+    },
+    {
+      "id": "P-05", "pack": "core", "category": "Change", "name": "Configuration & Customization Standards",
+      "purpose": "Keep {app} maintainable and upgradeable by controlling how it is configured and extended.",
+      "statements": [
+        "Customizations and extensions to {app} MUST be approved by the Development Lead before build.",
+        "Out-of-the-box capabilities SHOULD be preferred over custom development.",
+        "All custom code, configuration-as-code and scripts MUST be stored in version control.",
+        "Third-party add-ons, plugins or modules MUST be approved before installation."
+      ],
+      "standards": [
+        {"text": "Document a design decision record for every significant customization: need, options considered, upgrade impact."},
+        {"text": "Follow {vendor}'s documented extension points and supported APIs; unsupported modifications are prohibited."},
+        {"text": "Maintain an add-on/plugin register: name, version, owner, purpose, support status, renewal date."},
+        {"text": "Code review required for all custom code; automated linting/tests in the build where feasible."}
+      ],
+      "owner": "dev-lead", "raci": {"R": "dev-lead", "A": "business-owner", "C": ["app-admin"], "I": ["infra-lead"]},
+      "metrics": ["Customizations with design records", "Unapproved add-ons found", "Upgrade effort attributable to customizations"],
+      "review_months": 12, "csf": ["PR", "ID"], "tags": ["ISO 27001"]
+    },
+    {
+      "id": "P-06", "pack": "core", "category": "Operations", "name": "Patching, Upgrades & Vendor Support Lifecycle",
+      "purpose": "Keep {app} on supported, patched versions to limit security and support risk.",
+      "statements": [
+        "{app} MUST run on a version supported by the vendor.",
+        "Security patches MUST be applied within defined timeframes based on severity.",
+        "An upgrade roadmap MUST be maintained showing support end dates and planned upgrades.",
+        "The organization MUST subscribe to {vendor} security and release notifications."
+      ],
+      "standards": [
+        {"text": "Patch timeframes: critical 7 days, high 30 days, medium 90 days, low next scheduled release (adjust to your risk appetite).", "when": ["iaas", "on-prem", "paas"]},
+        {"text": "Track the vendor's lifecycle page; plan upgrades at least 6 months before end of mainstream support.", "when": ["iaas", "on-prem", "paas"]},
+        {"text": "For SaaS, track the vendor's release calendar, test new releases in a sandbox/preview tenant, and review deprecation notices monthly.", "when": ["saas"]},
+        {"text": "Maintain a lifecycle register: component, version, support phase, end date, next action."}
+      ],
+      "owner": "app-admin", "raci": {"R": "app-admin", "A": "business-owner", "C": ["infra-lead", "dev-lead", "security-lead"], "I": ["exec-sponsor"]},
+      "metrics": ["Days behind on critical patches", "Months until end of support", "Open vendor advisories"],
+      "review_months": 6, "csf": ["PR", "ID"], "tags": ["SOC 2", "ISO 27001", "PCI DSS", "CIS"]
+    },
+    {
+      "id": "P-07", "pack": "core", "category": "Operations", "name": "Backup & Recovery",
+      "purpose": "Recover {app} and its data within agreed times after failure, error or attack.",
+      "statements": [
+        "{app} data and configuration MUST be backed up according to a defined schedule.",
+        "Recovery time and recovery point objectives (RTO/RPO) MUST be defined and approved by the Business Owner.",
+        "Restores MUST be tested at least annually.",
+        "Backups MUST be protected from unauthorized access and from ransomware (isolated or immutable copies)."
+      ],
+      "standards": [
+        {"text": "Default objectives (adjust per business impact): RPO 24 hours, RTO 8 hours for internal systems; RPO 1 hour, RTO 4 hours for customer-facing systems."},
+        {"text": "Backups encrypted at rest; at least one copy offsite/another region and one immutable or offline.", "when": ["iaas", "on-prem", "paas"]},
+        {"text": "Confirm the vendor's backup scope, retention and restore process in the contract; export critical data on a schedule to an organization-controlled store.", "when": ["saas"]},
+        {"text": "Annual restore test documented with achieved RTO/RPO and remediation items."}
+      ],
+      "owner": "infra-lead", "raci": {"R": "infra-lead", "A": "business-owner", "C": ["app-admin", "vendor-manager"], "I": ["exec-sponsor"]},
+      "metrics": ["Backup success rate", "Last successful restore test date", "Achieved vs target RTO/RPO"],
+      "review_months": 12, "csf": ["RC", "PR"], "tags": ["SOC 2", "ISO 27001", "HIPAA"]
+    },
+    {
+      "id": "P-08", "pack": "core", "category": "Operations", "name": "Monitoring, Incident Response & Escalation",
+      "purpose": "Detect problems with {app} quickly and make sure everyone knows who to call and what happens next.",
+      "statements": [
+        "{app} availability and key functions MUST be monitored.",
+        "Incidents MUST be classified by severity and handled according to the escalation matrix.",
+        "Severity 1 incidents MUST have a post-incident review within five business days.",
+        "Users MUST have a single, published channel to report problems."
+      ],
+      "standards": [
+        {"text": "Severity definitions: Sev 1 = {app} down or data at risk for many users; Sev 2 = major function impaired; Sev 3 = minor/workaround exists; Sev 4 = request/cosmetic."},
+        {"text": "Escalation matrix published (role, primary, backup, contact method, response target) and tested twice a year."},
+        {"text": "Synthetic uptime checks and alerting on error rate, response time and failed jobs; alerts route to an on-call rotation for Sev 1/2."},
+        {"text": "Know the vendor support path: support tiers, contract number, how to open a priority case, and expected response times.", "when": ["saas", "paas"]},
+        {"text": "Status updates to users every 60 minutes during Sev 1 through the communication channel defined in this plan."}
+      ],
+      "owner": "app-admin", "raci": {"R": "app-admin", "A": "business-owner", "C": ["infra-lead", "dev-lead"], "I": ["comms-lead", "exec-sponsor"]},
+      "metrics": ["Mean time to detect", "Mean time to restore", "Sev 1 count per quarter", "Post-incident reviews completed"],
+      "review_months": 12, "csf": ["DE", "RS"], "tags": ["SOC 2", "ISO 27001", "ITIL"]
+    },
+    {
+      "id": "P-09", "pack": "core", "category": "Change", "name": "Integrations & API Usage",
+      "purpose": "Connect {app} to other systems securely, reliably and with clear ownership.",
+      "statements": [
+        "Every integration with {app} MUST be registered with an owner, purpose, data exchanged and authentication method.",
+        "Integrations MUST use dedicated service identities with least privilege, never personal accounts.",
+        "Credentials and API keys MUST be stored in an approved secrets store, never in code or documents.",
+        "Integrations MUST be monitored for failure."
+      ],
+      "standards": [
+        {"text": "Integration register fields: name, systems, direction, data classification, auth method, owner, SLA, monitoring link."},
+        {"text": "Use the vendor's supported APIs; respect documented rate limits and implement retries with back-off."},
+        {"text": "Rotate integration credentials at least annually or on personnel change."},
+        {"text": "New integrations reviewed by the Development Lead (and Security Lead in the robust pack) before production."}
+      ],
+      "owner": "dev-lead", "raci": {"R": "dev-lead", "A": "business-owner", "C": ["app-admin", "security-lead"], "I": ["infra-lead"]},
+      "metrics": ["Registered vs discovered integrations", "Integration failures per month", "Credentials older than 12 months"],
+      "review_months": 12, "csf": ["ID", "PR"], "tags": ["SOC 2", "ISO 27001"]
+    },
+    {
+      "id": "P-10", "pack": "core", "category": "People", "name": "Training, Onboarding & Offboarding",
+      "purpose": "Make sure people know how to use {app} correctly and lose access when they no longer need it.",
+      "statements": [
+        "Users MUST complete role-appropriate {app} training before receiving access.",
+        "Administrators MUST complete administrator training and read this governance plan.",
+        "Offboarding MUST remove access and transfer ownership of content, data and integrations.",
+        "Training material MUST be kept current with the deployed version."
+      ],
+      "standards": [
+        {"text": "Maintain role-based quick-start guides and a recorded walkthrough for each role in the role catalog."},
+        {"text": "Access request form includes training completion confirmation."},
+        {"text": "Offboarding checklist: disable account, revoke tokens, reassign owned items/workflows, transfer integration ownership."},
+        {"text": "Annual refresher for administrators, including policy changes from the past year."}
+      ],
+      "owner": "business-owner", "raci": {"R": "content-data-manager", "A": "business-owner", "C": ["app-admin"], "I": ["comms-lead"]},
+      "metrics": ["% of users trained before access", "Offboarding completed within 1 business day"],
+      "review_months": 12, "csf": ["PR", "GV"], "tags": ["SOC 2", "ISO 27001", "HIPAA"]
+    },
+    {
+      "id": "P-11", "pack": "robust", "category": "Security", "name": "Information Security & Vulnerability Management",
+      "purpose": "Identify and remediate security weaknesses across the platform before they are exploited.",
+      "statements": [
+        "Systems in scope MUST be scanned for vulnerabilities on a defined schedule.",
+        "Vulnerabilities MUST be remediated within severity-based timeframes or have an approved exception.",
+        "Security testing MUST occur before major releases and at least annually for internet-facing systems.",
+        "Security risks MUST be recorded in the risk register with an owner."
+      ],
+      "standards": [
+        {"text": "Authenticated vulnerability scans monthly for servers and containers; continuous dependency scanning in CI.", "when": ["iaas", "on-prem", "paas"]},
+        {"text": "Annual third-party penetration test for internet-facing systems; findings tracked to closure."},
+        {"text": "Review the vendor's SOC 2 / ISO 27001 report annually and track complementary user entity controls (CUECs).", "when": ["saas"]},
+        {"text": "Remediation SLA aligned with P-06 patch timeframes; exceptions require Security Lead approval and expiry date."}
+      ],
+      "owner": "security-lead", "raci": {"R": "security-lead", "A": "exec-sponsor", "C": ["infra-lead", "dev-lead"], "I": ["business-owner"]},
+      "metrics": ["Open critical/high vulnerabilities", "Mean time to remediate", "Exceptions past expiry"],
+      "review_months": 12, "csf": ["ID", "PR", "DE"], "tags": ["SOC 2", "ISO 27001", "PCI DSS", "NIST CSF"]
+    },
+    {
+      "id": "P-12", "pack": "robust", "category": "Networking", "name": "Network Architecture & Segmentation",
+      "purpose": "Limit exposure and blast radius through deliberate network design.",
+      "statements": [
+        "Systems MUST be placed in network zones according to their exposure and data sensitivity.",
+        "Traffic between zones MUST be denied by default and allowed only by documented rules.",
+        "Network diagrams MUST be maintained and reviewed at least annually.",
+        "Firewall and security group rules MUST be reviewed at least semi-annually."
+      ],
+      "standards": [
+        {"text": "Minimum zones: public/edge (CDN, WAF), application, data, and management; administrative interfaces only in the management zone.", "when": ["iaas", "on-prem"]},
+        {"text": "Use private endpoints / service endpoints for PaaS data services; disable public network access where supported.", "when": ["paas"]},
+        {"text": "Every firewall/NSG rule has an owner, ticket reference and review date; any-any rules prohibited."},
+        {"text": "Document data flows between {app} and other systems in the network diagram, including vendor-hosted endpoints.", "when": ["saas"]}
+      ],
+      "owner": "infra-lead", "raci": {"R": "infra-lead", "A": "exec-sponsor", "C": ["security-lead"], "I": ["dev-lead"]},
+      "metrics": ["Rules without owner/ticket", "Rules reviewed on schedule", "Publicly exposed management interfaces"],
+      "review_months": 12, "csf": ["PR"], "tags": ["PCI DSS", "ISO 27001", "CIS", "NIST CSF"]
+    },
+    {
+      "id": "P-13", "pack": "robust", "category": "Networking", "name": "Perimeter, Remote Access & Edge Protection",
+      "purpose": "Control how users and attackers can reach systems from outside the organization.",
+      "statements": [
+        "Remote administrative access MUST use approved remote access methods (VPN or zero-trust access) with MFA.",
+        "Internet-facing applications MUST be protected by a web application firewall or equivalent edge controls.",
+        "Direct RDP/SSH exposure to the internet is prohibited.",
+        "TLS MUST be enforced for all external traffic with current, approved configurations."
+      ],
+      "standards": [
+        {"text": "WAF in prevention mode with managed rule sets; bot and rate-limit protection on login and search endpoints."},
+        {"text": "Use bastion/jump hosts or just-in-time access for server administration.", "when": ["iaas", "on-prem"]},
+        {"text": "TLS 1.2 minimum (1.3 preferred); HSTS enabled; certificates auto-renewed and monitored for expiry."},
+        {"text": "Restrict vendor admin consoles by IP or conditional access policies where the vendor supports it.", "when": ["saas"]}
+      ],
+      "owner": "infra-lead", "raci": {"R": "infra-lead", "A": "security-lead", "C": ["app-admin"], "I": ["business-owner"]},
+      "metrics": ["Internet-exposed management ports", "Certificates expiring < 30 days", "WAF blocked requests trend"],
+      "review_months": 12, "csf": ["PR", "DE"], "tags": ["PCI DSS", "CIS", "ISO 27001"]
+    },
+    {
+      "id": "P-14", "pack": "robust", "category": "Security", "name": "Privileged Access Management",
+      "purpose": "Tightly control and record the most powerful access across the platform.",
+      "statements": [
+        "Privileged access to infrastructure, databases and administrative consoles MUST be granted just-in-time or through a privileged access management (PAM) tool.",
+        "Privileged sessions SHOULD be recorded or logged in detail.",
+        "Standing privileged access MUST be minimized and justified.",
+        "Privileged credentials MUST be vaulted and rotated."
+      ],
+      "standards": [
+        {"text": "Separate admin accounts from daily-use accounts for all privileged users."},
+        {"text": "Just-in-time elevation with approval and time limits (e.g. 4 hours) for production administration."},
+        {"text": "Vaulted shared credentials rotated after each use or at least every 90 days."},
+        {"text": "Monthly report of privileged role assignments reviewed by the Security Lead."}
+      ],
+      "owner": "security-lead", "raci": {"R": "infra-lead", "A": "security-lead", "C": ["app-admin"], "I": ["business-owner"]},
+      "metrics": ["Standing privileged accounts", "JIT requests per month", "Credentials past rotation"],
+      "review_months": 12, "csf": ["PR"], "tags": ["SOC 2", "ISO 27001", "PCI DSS", "SOX"]
+    },
+    {
+      "id": "P-15", "pack": "robust", "category": "DevOps", "name": "Source Control & CI/CD",
+      "purpose": "Build and deploy changes through automated, traceable and gated pipelines.",
+      "statements": [
+        "All code, configuration and infrastructure definitions MUST be stored in the approved source control system.",
+        "Production deployments MUST be performed by automated pipelines, not by hand.",
+        "Pipelines MUST include automated quality and security gates.",
+        "Every production deployment MUST be traceable to an approved change and a reviewed commit."
+      ],
+      "standards": [
+        {"text": "Protected main branch: pull requests required, at least one reviewer, passing checks, no force-push."},
+        {"text": "Pipeline gates: build, unit tests, linting, dependency/vulnerability scan, secret scan; production stage requires manual approval."},
+        {"text": "Pin tool and dependency versions; store build artifacts immutably with provenance."},
+        {"text": "Deployment logs retained for at least 12 months as change evidence."}
+      ],
+      "owner": "devops-lead", "raci": {"R": "devops-lead", "A": "dev-lead", "C": ["security-lead"], "I": ["business-owner"]},
+      "metrics": ["Deployment frequency", "Change failure rate", "Manual production deployments", "Pipeline gate bypasses"],
+      "review_months": 12, "csf": ["PR", "GV"], "tags": ["SOC 2", "SOX", "ISO 27001", "DORA"]
+    },
+    {
+      "id": "P-16", "pack": "robust", "category": "DevOps", "name": "Environment Management & Test Data",
+      "purpose": "Keep environments consistent, purposeful and free of uncontrolled production data.",
+      "statements": [
+        "Each environment MUST have a defined purpose, owner and access policy.",
+        "Production data MUST NOT be copied to lower environments unless masked or anonymized, or explicitly approved.",
+        "Environments SHOULD be provisioned from code to ensure parity.",
+        "Unused environments MUST be decommissioned."
+      ],
+      "standards": [
+        {"text": "Environment register: name, purpose, owner, data classification, access group, cost center."},
+        {"text": "Data masking procedure documented for any production-to-test refresh; refreshes logged."},
+        {"text": "Infrastructure as code (e.g. Terraform, Bicep, CloudFormation) for all non-SaaS environments.", "when": ["iaas", "paas"]},
+        {"text": "Quarterly review of environments for cost and continued need."}
+      ],
+      "owner": "devops-lead", "raci": {"R": "devops-lead", "A": "dev-lead", "C": ["data-protection", "infra-lead"], "I": ["business-owner"]},
+      "metrics": ["Environments without owner", "Unmasked production data copies", "Environment drift findings"],
+      "review_months": 12, "csf": ["PR", "ID"], "tags": ["GDPR", "HIPAA", "ISO 27001"]
+    },
+    {
+      "id": "P-17", "pack": "robust", "category": "Security", "name": "Secrets & Key Management",
+      "purpose": "Protect credentials, keys and certificates throughout their lifecycle.",
+      "statements": [
+        "Secrets MUST be stored only in approved secret management systems.",
+        "Secrets MUST NOT be committed to source control, embedded in images or shared via chat/email.",
+        "Encryption keys and certificates MUST have owners, rotation schedules and expiry monitoring.",
+        "Exposed secrets MUST be rotated immediately and treated as security incidents."
+      ],
+      "standards": [
+        {"text": "Use a managed vault (e.g. Azure Key Vault, AWS Secrets Manager, HashiCorp Vault) with access via workload identity."},
+        {"text": "Automated secret scanning on every commit and pull request; block merges on findings."},
+        {"text": "Rotation: service credentials at least annually, high-privilege secrets every 90 days, certificates before expiry with 30-day alerts."}
+      ],
+      "owner": "devops-lead", "raci": {"R": "devops-lead", "A": "security-lead", "C": ["dev-lead"], "I": ["app-admin"]},
+      "metrics": ["Secrets found in repos", "Secrets past rotation", "Certificate expiry incidents"],
+      "review_months": 12, "csf": ["PR"], "tags": ["SOC 2", "PCI DSS", "ISO 27001"]
+    },
+    {
+      "id": "P-18", "pack": "robust", "category": "Security", "name": "Logging, Audit Trails & Security Monitoring",
+      "purpose": "Record who did what, detect suspicious activity, and preserve evidence.",
+      "statements": [
+        "Authentication, administrative actions and data access for {app} MUST be logged.",
+        "Logs MUST be centralized, protected from tampering and retained per the retention schedule.",
+        "Security-relevant events MUST be monitored and alerted.",
+        "Logs MUST NOT contain secrets or unnecessary personal data."
+      ],
+      "standards": [
+        {"text": "Forward {app} audit logs and platform logs to the central log/SIEM platform."},
+        {"text": "Retention: 90 days hot, 12 months total minimum (longer where regulation requires)."},
+        {"text": "Alert on: privileged role changes, MFA disabled, mass export/deletion, logins from unusual locations, repeated failed logins."},
+        {"text": "Enable the vendor's audit log/event monitoring features and export them before the vendor's retention window ends.", "when": ["saas"]}
+      ],
+      "owner": "security-lead", "raci": {"R": "security-lead", "A": "exec-sponsor", "C": ["app-admin", "infra-lead"], "I": ["compliance-officer"]},
+      "metrics": ["Log sources onboarded", "Alert response time", "Log retention gaps"],
+      "review_months": 12, "csf": ["DE", "PR"], "tags": ["SOC 2", "PCI DSS", "HIPAA", "ISO 27001"]
+    },
+    {
+      "id": "P-19", "pack": "robust", "category": "Resilience", "name": "Business Continuity & Disaster Recovery",
+      "purpose": "Keep critical business services running, or restore them, during a major disruption.",
+      "statements": [
+        "A business impact analysis MUST classify {app} by criticality.",
+        "A disaster recovery plan MUST exist for {app} consistent with its criticality and approved RTO/RPO.",
+        "DR plans MUST be tested at least annually.",
+        "Manual workarounds for critical processes MUST be documented."
+      ],
+      "standards": [
+        {"text": "Criticality tiers: Tier 1 (RTO ≤ 4h), Tier 2 (≤ 24h), Tier 3 (≤ 72h); DR design matched to tier."},
+        {"text": "Secondary region/site for Tier 1 systems with documented failover and failback runbooks.", "when": ["iaas", "paas", "on-prem"]},
+        {"text": "Obtain the vendor's BC/DR summary and test results; document an exit/continuity plan if the vendor fails.", "when": ["saas"]},
+        {"text": "Annual DR exercise (tabletop at minimum; technical failover for Tier 1) with lessons learned."}
+      ],
+      "owner": "infra-lead", "raci": {"R": "infra-lead", "A": "exec-sponsor", "C": ["business-owner", "vendor-manager"], "I": ["comms-lead"]},
+      "metrics": ["Last DR test date", "Achieved vs target RTO", "Open DR findings"],
+      "review_months": 12, "csf": ["RC", "GV"], "tags": ["ISO 22301", "SOC 2", "DORA"]
+    },
+    {
+      "id": "P-20", "pack": "robust", "category": "Data", "name": "Data Classification, Privacy & Retention",
+      "purpose": "Handle data according to its sensitivity and legal obligations.",
+      "statements": [
+        "All data in {app} MUST be classified using the organization's classification scheme.",
+        "Handling controls (encryption, access, sharing) MUST match the classification.",
+        "Personal data processing MUST have a lawful basis and be recorded where required.",
+        "Data MUST be deleted or anonymized when its retention period ends."
+      ],
+      "standards": [
+        {"text": "Classification levels: Public, Internal, Confidential, Restricted; label at the data set or module level in {app}."},
+        {"text": "Encryption at rest and in transit for Confidential and Restricted data."},
+        {"text": "Privacy impact assessment for new processing of personal data in {app}."},
+        {"text": "Documented process to handle data subject requests (access, correction, deletion) affecting {app}."}
+      ],
+      "owner": "data-protection", "raci": {"R": "content-data-manager", "A": "data-protection", "C": ["compliance-officer", "app-admin"], "I": ["business-owner"]},
+      "metrics": ["% of data sets classified", "Overdue retention deletions", "Data subject requests closed on time"],
+      "review_months": 12, "csf": ["ID", "PR"], "tags": ["GDPR", "CCPA", "HIPAA", "ISO 27701"]
+    },
+    {
+      "id": "P-21", "pack": "robust", "category": "Vendor", "name": "Third-Party & Vendor Risk Management",
+      "purpose": "Understand and manage the risk introduced by vendors and their sub-processors.",
+      "statements": [
+        "Vendors providing or supporting {app} MUST undergo a risk assessment before contract and at renewal.",
+        "Contracts MUST include security, privacy, SLA and exit provisions appropriate to the risk.",
+        "Vendor security attestations MUST be reviewed at least annually.",
+        "Vendor access to organizational systems MUST follow P-02 and P-14."
+      ],
+      "standards": [
+        {"text": "Vendor tiering by data access and criticality; questionnaire depth matched to tier."},
+        {"text": "Contract checklist: data location, breach notification time, sub-processor list, audit rights, data return/deletion on exit, SLA credits."},
+        {"text": "Track vendor SLAs monthly and review performance at least quarterly."}
+      ],
+      "owner": "vendor-manager", "raci": {"R": "vendor-manager", "A": "business-owner", "C": ["security-lead", "compliance-officer"], "I": ["exec-sponsor"]},
+      "metrics": ["Vendors with current assessment", "SLA breaches", "Contracts missing exit clauses"],
+      "review_months": 12, "csf": ["GV"], "tags": ["SOC 2", "ISO 27001", "DORA", "HIPAA (BAA)"]
+    },
+    {
+      "id": "P-22", "pack": "robust", "category": "Operations", "name": "Asset, License & Cost Management",
+      "purpose": "Know what you run, what you pay for, and whether it is used.",
+      "statements": [
+        "All components, licenses and subscriptions supporting {app} MUST be recorded in the asset inventory.",
+        "License usage MUST be reviewed at least semi-annually against entitlements.",
+        "Cloud spend for {app} MUST be tagged, budgeted and monitored.",
+        "Renewals MUST be reviewed at least 90 days before the renewal date."
+      ],
+      "standards": [
+        {"text": "Asset inventory fields: component, version, owner, environment, license type, cost, renewal date."},
+        {"text": "Mandatory resource tags: application, environment, owner, cost-center.", "when": ["iaas", "paas"]},
+        {"text": "Budget alerts at 80% and 100% of monthly forecast; monthly cost review with the Business Owner."},
+        {"text": "Reclaim inactive user licenses after 60 days of inactivity.", "when": ["saas"]}
+      ],
+      "owner": "vendor-manager", "raci": {"R": "app-admin", "A": "business-owner", "C": ["vendor-manager", "infra-lead"], "I": ["exec-sponsor"]},
+      "metrics": ["License utilization %", "Untagged resources", "Spend vs budget"],
+      "review_months": 12, "csf": ["ID", "GV"], "tags": ["FinOps", "ITAM"]
+    },
+    {
+      "id": "P-23", "pack": "robust", "category": "Operations", "name": "Capacity & Performance Management",
+      "purpose": "Keep {app} fast and available as usage grows.",
+      "statements": [
+        "Performance and capacity targets for {app} MUST be defined.",
+        "Capacity MUST be reviewed against forecasts before major business events and at least quarterly.",
+        "Significant releases SHOULD include performance testing.",
+        "Performance degradations MUST be treated as incidents per P-08."
+      ],
+      "standards": [
+        {"text": "Targets: e.g. 95th percentile page/API response under 2 seconds; availability 99.9% monthly for customer-facing services."},
+        {"text": "Load test before peak events and major releases; autoscaling limits documented.", "when": ["iaas", "paas", "on-prem"]},
+        {"text": "Track vendor-imposed limits (API rate limits, storage, users) and alert at 80% consumption.", "when": ["saas", "paas"]}
+      ],
+      "owner": "infra-lead", "raci": {"R": "infra-lead", "A": "business-owner", "C": ["dev-lead"], "I": ["business-stakeholder"]},
+      "metrics": ["p95 response time", "Monthly availability", "Capacity headroom"],
+      "review_months": 12, "csf": ["ID", "DE"], "tags": ["ITIL"]
+    },
+    {
+      "id": "P-24", "pack": "robust", "category": "People", "name": "Acceptable Use & AI Usage",
+      "purpose": "Set clear expectations for how people use {app}, related data, and AI tools.",
+      "statements": [
+        "Users MUST use {app} only for authorized business purposes.",
+        "Confidential or Restricted data MUST NOT be entered into AI tools that are not approved for that classification.",
+        "AI-generated content published through {app} MUST be reviewed by a human accountable for its accuracy.",
+        "AI features within {app} MUST be assessed and approved before enablement."
+      ],
+      "standards": [
+        {"text": "Publish an approved AI tools list with permitted data classifications for each."},
+        {"text": "Label or disclose AI-generated content where required by law, contract or brand policy."},
+        {"text": "Review vendor AI feature terms: data retention, model training on customer data, regional processing."}
+      ],
+      "owner": "business-owner", "raci": {"R": "business-owner", "A": "exec-sponsor", "C": ["security-lead", "data-protection", "compliance-officer"], "I": ["comms-lead"]},
+      "metrics": ["AI features assessed before enablement", "Acceptable use acknowledgements"],
+      "review_months": 6, "csf": ["GV"], "tags": ["EU AI Act", "ISO 42001", "NIST AI RMF"]
+    },
+    {
+      "id": "P-25", "pack": "robust", "category": "Compliance", "name": "Compliance, Audit & Exceptions",
+      "purpose": "Show, with evidence, that policies are followed, and manage deviations deliberately.",
+      "statements": [
+        "Applicable regulatory and contractual obligations MUST be mapped to policies in this plan.",
+        "Evidence of control operation MUST be collected and retained.",
+        "Deviations from any policy MUST be handled through the exceptions process with risk acceptance and expiry.",
+        "Internal reviews of policy compliance MUST occur at least annually."
+      ],
+      "standards": [
+        {"text": "Maintain a control matrix: obligation → policy → standard → evidence → owner → frequency."},
+        {"text": "Exceptions register: policy, requester, justification, compensating controls, risk owner, approval, expiry (max 12 months)."},
+        {"text": "Evidence stored in a central, access-controlled repository organized by policy ID and period."}
+      ],
+      "owner": "compliance-officer", "raci": {"R": "compliance-officer", "A": "exec-sponsor", "C": ["security-lead", "business-owner"], "I": ["comms-lead"]},
+      "metrics": ["Controls with current evidence", "Open exceptions", "Expired exceptions", "Audit findings open"],
+      "review_months": 12, "csf": ["GV"], "tags": ["SOC 2", "ISO 27001", "SOX", "HIPAA", "PCI DSS"]
+    },
+    {
+      "id": "P-26", "pack": "robust", "category": "Architecture", "name": "Architecture Review & Technical Debt",
+      "purpose": "Make significant technical decisions deliberately and keep debt visible.",
+      "statements": [
+        "Significant architecture changes to {app} or its surroundings MUST be reviewed before implementation.",
+        "Architecture decisions MUST be recorded.",
+        "Technical debt MUST be tracked and prioritized alongside feature work.",
+        "Reference architectures and approved technology lists SHOULD guide new work."
+      ],
+      "standards": [
+        {"text": "Architecture decision records (ADRs) stored with the code or in a shared repository."},
+        {"text": "Review triggers: new integration, new data store, change in hosting, new external exposure, new vendor."},
+        {"text": "Reserve a defined share of delivery capacity (e.g. 15–20%) for technical debt and upgrades."}
+      ],
+      "owner": "dev-lead", "raci": {"R": "dev-lead", "A": "business-owner", "C": ["security-lead", "infra-lead", "devops-lead"], "I": ["exec-sponsor"]},
+      "metrics": ["ADRs recorded per quarter", "Debt backlog age", "Capacity spent on debt"],
+      "review_months": 12, "csf": ["GV", "ID"], "tags": ["TOGAF"]
+    },
+    {
+      "id": "P-27", "pack": "robust", "category": "Cloud", "name": "Cloud Governance & Guardrails",
+      "purpose": "Apply consistent, automated guardrails to cloud resources supporting {app}.",
+      "statements": [
+        "Cloud resources MUST be deployed within approved accounts/subscriptions, regions and services.",
+        "Preventive guardrails (policy as code) MUST enforce baseline security settings.",
+        "Public exposure of storage, databases and management endpoints MUST be blocked by default.",
+        "Cloud configuration MUST be continuously assessed against a security baseline."
+      ],
+      "standards": [
+        {"text": "Landing zone with separate accounts/subscriptions per environment; centralized identity and logging.", "when": ["iaas", "paas"]},
+        {"text": "Policy as code (e.g. Azure Policy, AWS SCPs/Config, OPA) enforcing encryption, tagging, allowed regions and no public storage.", "when": ["iaas", "paas"]},
+        {"text": "Cloud security posture management with findings triaged weekly.", "when": ["iaas", "paas"]},
+        {"text": "For SaaS-only estates, apply this policy to any supporting cloud services (integration platforms, storage, functions).", "when": ["saas", "on-prem"]}
+      ],
+      "owner": "devops-lead", "raci": {"R": "devops-lead", "A": "security-lead", "C": ["infra-lead"], "I": ["business-owner"]},
+      "metrics": ["Policy violations", "Publicly exposed resources", "Posture score"],
+      "review_months": 12, "csf": ["PR", "GV"], "tags": ["CIS", "ISO 27017", "SOC 2"]
+    },
+    {
+      "id": "P-28", "pack": "robust", "category": "Security", "name": "Endpoint & Workstation Security",
+      "purpose": "Make sure the devices used to access and administer {app} are trustworthy.",
+      "statements": [
+        "Devices used to access {app} MUST meet the organization's device security baseline.",
+        "Administrative access SHOULD come only from managed devices.",
+        "Lost or stolen devices MUST be reported immediately and remotely wiped where possible.",
+        "Removable media use for Restricted data MUST be controlled."
+      ],
+      "standards": [
+        {"text": "Managed device baseline: disk encryption, EDR, OS patching, screen lock, firewall."},
+        {"text": "Conditional access: require compliant devices for administrative roles and for Restricted data."},
+        {"text": "Privileged access workstations (or hardened profiles) for infrastructure administrators."}
+      ],
+      "owner": "security-lead", "raci": {"R": "infra-lead", "A": "security-lead", "C": ["app-admin"], "I": ["comms-lead"]},
+      "metrics": ["% compliant devices", "Admin sign-ins from unmanaged devices"],
+      "review_months": 12, "csf": ["PR"], "tags": ["CIS", "ISO 27001", "HIPAA"]
+    }
+  ]
+}
